@@ -1,0 +1,110 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required)
+    //   - displayName: string
+    //   - createdAt: timestamp
+    //   - isPremium: boolean
+    //   - role: string (user, admin)
+    //
+    // Collection: readings
+    // Document ID: {readingId}
+    // Fields:
+    //   - userId: string (required)
+    //   - timestamp: timestamp (required)
+    //   - type: string (required)
+    //   - question: string
+    //   - cards: list (required)
+    //   - interpretation: string (required)
+    //   - isFavorite: boolean
+    //
+    // Collection: settings
+    // Document ID: global
+    // Fields:
+    //   - isReadingLimitEnabled: boolean (required)
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        (request.auth.token.email == "rafaelgustavo.01@gmail.com" && request.auth.token.email_verified == true) ||
+        request.auth.token.email == "raissavj@gmail.com" || 
+        request.auth.token.email == "admin@vidaluz.online" ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email']) &&
+             data.uid is string &&
+             data.email is string &&
+             (!('isPremium' in data) || data.isPremium is bool) &&
+             (!('role' in data) || data.role in ['user', 'admin']);
+    }
+
+    function isValidReading(data) {
+      return data.keys().hasAll(['userId', 'timestamp', 'cards', 'interpretation']) &&
+             data.userId == request.auth.uid &&
+             data.cards is list &&
+             data.interpretation is string &&
+             data.interpretation.size() < 10000 &&
+             (!('isFavorite' in data) || data.isFavorite is bool);
+    }
+
+    function isValidSettings(data) {
+      return data.keys().hasAll(['isReadingLimitEnabled']) &&
+             data.isReadingLimitEnabled is bool;
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && 
+                      (!('role' in request.resource.data) || request.resource.data.role == 'user') &&
+                      (!('isPremium' in request.resource.data) || request.resource.data.isPremium == false);
+      allow update: if isAdmin() || 
+                      (isOwner(userId) && isValidUser(request.resource.data) && 
+                       request.resource.data.role == resource.data.role &&
+                       request.resource.data.isPremium == resource.data.isPremium);
+    }
+
+    match /readings/{readingId} {
+      allow read: if true; // Permitem que qualquer um veja uma leitura compartilhada
+      allow create: if isAuthenticated() && isValidReading(request.resource.data);
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid && isValidReading(request.resource.data);
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    match /visions/{visionId} {
+      allow read: if true; // Visões geradas são públicas por padrão para permitir compartilhamento
+      allow create: if isAuthenticated() && 
+                    request.resource.data.userId == request.auth.uid &&
+                    request.resource.data.imageUrl is string &&
+                    request.resource.data.imageUrl.size() < 1500000; // ~1.5MB max for base64
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    match /settings/{settingId} {
+      allow read: if true; // Configurações básicas como número do whatsapp devem ser públicas
+      allow write: if isAdmin() && isValidSettings(request.resource.data);
+    }
+  }
+}

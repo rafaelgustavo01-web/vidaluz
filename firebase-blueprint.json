@@ -1,0 +1,67 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "isPremium": { "type": "boolean" },
+        "role": { "type": "string", "enum": ["user", "admin"] }
+      },
+      "required": ["uid", "email"]
+    },
+    "Settings": {
+      "title": "App Settings",
+      "description": "Global application settings",
+      "type": "object",
+      "properties": {
+        "isReadingLimitEnabled": { "type": "boolean" }
+      },
+      "required": ["isReadingLimitEnabled"]
+    },
+    "Reading": {
+      "title": "Tarot Reading",
+      "description": "A tarot reading session",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "type": { "type": "string", "enum": ["daily", "question"] },
+        "question": { "type": "string" },
+        "cards": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "position": { "type": "string" },
+              "meaning": { "type": "string" },
+              "isReversed": { "type": "boolean" }
+            }
+          }
+        },
+        "interpretation": { "type": "string" },
+        "isFavorite": { "type": "boolean" }
+      },
+      "required": ["userId", "timestamp", "cards", "interpretation"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/readings/{readingId}": {
+      "schema": "Reading",
+      "description": "Tarot readings history"
+    },
+    "/settings/{settingId}": {
+      "schema": "Settings",
+      "description": "Global app settings"
+    }
+  }
+}

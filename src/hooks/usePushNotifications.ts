@@ -40,7 +40,7 @@ export function usePushNotifications() {
         // Use the VAPID key below (you'll need to configure this in your Firebase console)
         // You can leave vapidKey empty for testing standard FCM, but for web push across browsers it's required
         const currentToken = await getToken(messaging, { 
-          // vapidKey: 'YOUR_PUBLIC_VAPID_KEY_HERE' 
+           vapidKey: 'YOUR_PUBLIC_VAPID_KEY_HERE' 
         });
 
         if (currentToken) {

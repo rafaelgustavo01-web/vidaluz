@@ -20,6 +20,7 @@ export const TarotCard: React.FC<TarotCardProps> = ({
 }) => {
   const imageUrl = name ? getCardImageUrl(name) : '';
   const [isImageLoaded, setIsImageLoaded] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   return (
     <div className="flex flex-col items-center gap-3 perspective-1000">
@@ -139,7 +140,7 @@ export const TarotCard: React.FC<TarotCardProps> = ({
           )}
 
           <AnimatePresence>
-            {!isImageLoaded && name && (
+            {!isImageLoaded && name && !imgError && (
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -148,6 +149,20 @@ export const TarotCard: React.FC<TarotCardProps> = ({
               >
                 <Loader2 className="w-8 h-8 text-tarot-gold/40 animate-spin" />
               </motion.div>
+            )}
+            
+            {/* Fallback for missing images */}
+            {imgError && (
+               <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 border border-tarot-gold/20 p-4">
+                 <div className="absolute inset-2 border border-tarot-gold/10 rounded-lg"></div>
+                 <Sparkles className="w-8 h-8 text-tarot-gold/30 mb-2" />
+                 <h3 className="font-display text-base font-bold text-tarot-gold/80 text-center uppercase tracking-tight">
+                   {name}
+                 </h3>
+                 <p className="text-[8px] text-slate-500 uppercase tracking-widest mt-2 text-center">
+                   A Imagem sumiu,<br />mas a energia continua.
+                 </p>
+               </div>
             )}
           </AnimatePresence>
 
@@ -158,24 +173,28 @@ export const TarotCard: React.FC<TarotCardProps> = ({
               loading="lazy"
               decoding="async"
               initial={{ opacity: 0 }}
-              animate={{ opacity: isImageLoaded ? 1 : 0 }}
+              animate={{ opacity: isImageLoaded && !imgError ? 1 : 0 }}
               transition={{ duration: 0.5 }}
               onLoad={() => setIsImageLoaded(true)}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover relative z-10"
               referrerPolicy="no-referrer"
               onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
                 // Fallback if image fails
                 e.currentTarget.style.display = 'none';
+                setImgError(true);
                 setIsImageLoaded(true);
               }}
             />
           )}
-          <div className={`absolute bottom-0 left-0 right-0 bg-slate-950/80 p-2 backdrop-blur-sm ${isReversed ? 'rotate-180' : ''}`}>
-             <h3 className="font-display text-[10px] sm:text-xs font-bold text-tarot-gold uppercase tracking-tight">
-               {name}
-             </h3>
-             {isReversed && <span className="text-[8px] text-slate-400 uppercase mt-0.5 block">Invertida</span>}
-          </div>
+          
+          {!imgError && (
+            <div className={`absolute bottom-0 left-0 right-0 bg-slate-950/80 p-2 backdrop-blur-sm z-20 ${isReversed ? 'rotate-180' : ''}`}>
+               <h3 className="font-display text-[10px] sm:text-xs font-bold text-tarot-gold uppercase tracking-tight text-center">
+                 {name}
+               </h3>
+               {isReversed && <span className="text-[8px] text-slate-400 uppercase mt-0.5 block text-center">Invertida</span>}
+            </div>
+          )}
         </div>
       </motion.div>
     </div>

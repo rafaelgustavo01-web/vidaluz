@@ -11,8 +11,9 @@ import { AdminLogin } from './components/AdminLogin';
 import { ManifestVision } from './components/ManifestVision';
 import { WhatsAppButton } from './components/WhatsAppButton';
 import { motion, AnimatePresence } from 'motion/react';
-import { Moon, History, Sparkles, LogOut, Shield, ImagePlus, Lock } from 'lucide-react';
+import { Moon, History, Sparkles, LogOut, Shield, ImagePlus, Lock, Bell, BellRing } from 'lucide-react';
 import { useAppUser } from './hooks/useAppUser';
+import { usePushNotifications } from './hooks/usePushNotifications';
 import { PremiumModal } from './components/PremiumModal';
 
 import { Logo } from './components/Logo';
@@ -24,6 +25,8 @@ export default function App() {
   const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
   const [publicView, setPublicView] = useState<{ type: 'reading' | 'vision', id: string } | null>(null);
   const [isAdminLoginRoute, setIsAdminLoginRoute] = useState(false);
+  
+  const { permission, requestPermission } = usePushNotifications();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -228,6 +231,29 @@ export default function App() {
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-4">
+            
+            {/* Notificações Push */}
+            {permission !== 'granted' && permission !== 'denied' && (
+              <button
+                onClick={requestPermission}
+                className="p-2 text-slate-400 hover:text-tarot-gold hover:bg-tarot-gold/10 rounded-lg transition-colors relative group"
+                title="Ativar Notificações"
+              >
+                <div className="absolute top-1 right-1 w-2 h-2 bg-tarot-gold rounded-full animate-ping"></div>
+                <div className="absolute top-1 right-1 w-2 h-2 bg-tarot-gold rounded-full"></div>
+                <Bell className="w-5 h-5" />
+                <span className="hidden group-hover:block absolute top-full mt-2 right-0 bg-slate-800 text-[10px] text-white px-2 py-1 rounded whitespace-nowrap shadow-xl">
+                  Ativar Notificações
+                </span>
+              </button>
+            )}
+            
+            {permission === 'granted' && (
+              <div className="p-2 text-tarot-gold/50 rounded-lg" title="Notificações Ativas">
+                <BellRing className="w-5 h-5" />
+              </div>
+            )}
+
             {isAdmin && (
               <button
                 onClick={() => setActiveTab('admin')}

@@ -20,7 +20,7 @@ messaging.onBackgroundMessage((payload) => {
   const notificationTitle = payload.notification?.title || 'VidaLuz';
   const notificationOptions = {
     body: payload.notification?.body,
-    icon: '/pwa-192x192.png'
+    icon: '/logobg.png'
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);

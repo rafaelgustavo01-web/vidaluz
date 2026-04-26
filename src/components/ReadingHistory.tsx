@@ -6,6 +6,7 @@ import { ptBR } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
 import { History, Calendar, ChevronRight, Trash2, Star, Filter, Share2, Check } from 'lucide-react';
 import { getCardImageUrl } from '../constants/cards';
+import { UserProfile } from '../hooks/useAppUser';
 
 interface Reading {
   id: string;
@@ -17,7 +18,11 @@ interface Reading {
   isFavorite?: boolean;
 }
 
-export const ReadingHistory: React.FC = () => {
+interface ReadingHistoryProps {
+  profile: UserProfile | null;
+}
+
+export const ReadingHistory: React.FC<ReadingHistoryProps> = ({ profile }) => {
   const [readings, setReadings] = useState<Reading[]>([]);
   const [selectedReading, setSelectedReading] = useState<Reading | null>(null);
   const [loading, setLoading] = useState(true);
@@ -76,6 +81,7 @@ export const ReadingHistory: React.FC = () => {
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!profile?.isPremium && profile?.role !== 'admin') return;
     try {
       await deleteDoc(doc(db, 'readings', id));
       if (selectedReading?.id === id) setSelectedReading(null);
@@ -172,13 +178,15 @@ export const ReadingHistory: React.FC = () => {
                     >
                       <Star className={`w-3.5 h-3.5 ${reading.isFavorite ? 'fill-tarot-gold' : ''}`} />
                     </button>
-                    <button 
-                      onClick={(e) => handleDelete(reading.id, e)} 
-                      className="text-slate-500 hover:text-red-400 p-1 -m-1"
-                      title="Excluir leitura"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {(profile?.isPremium || profile?.role === 'admin') && (
+                      <button 
+                        onClick={(e) => handleDelete(reading.id, e)} 
+                        className="text-slate-500 hover:text-red-400 p-1 -m-1"
+                        title="Excluir leitura"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 text-slate-300 font-medium text-sm mb-1">
@@ -240,7 +248,7 @@ export const ReadingHistory: React.FC = () => {
                       <span className="text-[10px] text-slate-400 uppercase tracking-widest font-medium">
                         {card.position}
                       </span>
-                      <div className={`w-32 h-52 sm:w-40 sm:h-64 rounded-xl border border-tarot-gold/30 bg-slate-950 flex items-center justify-center overflow-hidden relative shadow-xl ${card.isReversed ? 'rotate-180' : ''}`}>
+                      <div className={`w-[141px] h-[229px] sm:w-[176px] sm:h-[282px] rounded-xl border border-tarot-gold/30 bg-slate-950 flex items-center justify-center overflow-hidden relative shadow-xl ${card.isReversed ? 'rotate-180' : ''}`}>
                         <img 
                           src={getCardImageUrl(card.name)} 
                           alt={card.name} 

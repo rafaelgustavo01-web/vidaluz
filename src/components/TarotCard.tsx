@@ -21,6 +21,13 @@ export const TarotCard: React.FC<TarotCardProps> = ({
   const imageUrl = name ? getCardImageUrl(name) : '';
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const imgRef = React.useRef<HTMLImageElement>(null);
+
+  React.useEffect(() => {
+    if (imgRef.current?.complete && imgRef.current.naturalWidth > 0) {
+      setIsImageLoaded(true);
+    }
+  }, [imageUrl]);
 
   return (
     <div className="flex flex-col items-center gap-3 perspective-1000">
@@ -44,7 +51,7 @@ export const TarotCard: React.FC<TarotCardProps> = ({
           scale: { duration: 0.4 },
           z: { duration: 0.4 }
         }}
-        className="relative w-32 h-52 sm:w-40 sm:h-64 rounded-xl cursor-pointer preserve-3d group"
+        className="relative w-[141px] h-[229px] sm:w-[176px] sm:h-[282px] rounded-xl cursor-pointer preserve-3d group"
       >
         {/* Global Shadow & Glow (Doesn't rotate) */}
         <div className="absolute -inset-1 bg-tarot-purple/20 blur-xl rounded-xl -z-10" />
@@ -142,8 +149,7 @@ export const TarotCard: React.FC<TarotCardProps> = ({
           <AnimatePresence>
             {!isImageLoaded && name && !imgError && (
               <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
+                initial={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 className="absolute inset-0 flex items-center justify-center bg-slate-800"
               >
@@ -160,27 +166,23 @@ export const TarotCard: React.FC<TarotCardProps> = ({
                    {name}
                  </h3>
                  <p className="text-[8px] text-slate-500 uppercase tracking-widest mt-2 text-center">
-                   A Imagem sumiu,<br />mas a energia continua.
+                   A energia continua.
                  </p>
                </div>
             )}
           </AnimatePresence>
 
-          {name && (
-            <motion.img 
+          {name && !imgError && (
+            <img 
+              ref={imgRef}
               src={imageUrl} 
               alt={name} 
-              loading="lazy"
               decoding="async"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: isImageLoaded && !imgError ? 1 : 0 }}
-              transition={{ duration: 0.5 }}
-              onLoad={() => setIsImageLoaded(true)}
-              className="w-full h-full object-cover relative z-10"
               referrerPolicy="no-referrer"
-              onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-                // Fallback if image fails
-                e.currentTarget.style.display = 'none';
+              crossOrigin="anonymous"
+              onLoad={() => setIsImageLoaded(true)}
+              className={`w-full h-full object-cover relative z-10 transition-opacity duration-300 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              onError={() => {
                 setImgError(true);
                 setIsImageLoaded(true);
               }}

@@ -306,9 +306,9 @@ export default function App() {
             {activeTab === 'reading' ? (
               <DailyReading profile={profile} settings={settings} />
             ) : activeTab === 'history' ? (
-              <ReadingHistory />
+              <ReadingHistory profile={profile} />
             ) : activeTab === 'manifest' && (profile?.isPremium || isAdmin) ? (
-              <ManifestVision />
+              <ManifestVision profile={profile} />
             ) : activeTab === 'admin' && isAdmin ? (
               <AdminPanel settings={settings} />
             ) : (

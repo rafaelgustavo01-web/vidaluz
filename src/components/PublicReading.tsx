@@ -94,7 +94,7 @@ export const PublicReading: React.FC<PublicReadingProps> = ({ id }) => {
               <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">
                 {card.position}
               </span>
-              <div className={`w-32 h-52 sm:w-44 sm:h-72 rounded-xl border-2 border-tarot-gold/30 bg-slate-950 flex items-center justify-center overflow-hidden relative shadow-[0_0_30px_rgba(212,175,55,0.1)] ${card.isReversed ? 'rotate-180' : ''}`}>
+              <div className={`w-[141px] h-[229px] sm:w-[194px] sm:h-[317px] rounded-xl border-2 border-tarot-gold/30 bg-slate-950 flex items-center justify-center overflow-hidden relative shadow-[0_0_30px_rgba(212,175,55,0.1)] ${card.isReversed ? 'rotate-180' : ''}`}>
                 <img 
                   src={getCardImageUrl(card.name)} 
                   alt={card.name} 

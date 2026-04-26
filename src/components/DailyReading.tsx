@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TAROT_CARDS, POSITIONS } from '../constants/cards';
+import { TAROT_CARDS, POSITIONS, getCardImageUrl } from '../constants/cards';
 import { TarotCard } from './TarotCard';
 import { getTarotInterpretation, TarotCard as ITarotCard } from '../lib/gemini';
 import { db, auth } from '../lib/firebase';
@@ -27,6 +27,7 @@ export const DailyReading: React.FC<DailyReadingProps> = ({ profile, settings })
   const [error, setError] = useState<string | null>(null);
   const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
   const [isCheckingLimit, setIsCheckingLimit] = useState(false);
+  const [isPreloading, setIsPreloading] = useState(false);
 
   const checkReadingLimit = async () => {
     if (!auth.currentUser || !settings?.isReadingLimitEnabled) return true;
@@ -93,6 +94,7 @@ export const DailyReading: React.FC<DailyReadingProps> = ({ profile, settings })
   };
 
   const drawCards = () => {
+    setIsPreloading(true);
     const shuffled = [...TAROT_CARDS].sort(() => Math.random() - 0.5);
     const picked = shuffled.slice(0, 3).map(name => ({
       name,
@@ -100,7 +102,22 @@ export const DailyReading: React.FC<DailyReadingProps> = ({ profile, settings })
       meaning: '' // Will be filled by AI
     }));
     setSelectedCards(picked);
-    setStep('reveal');
+
+    let loadedCount = 0;
+    const checkAllLoaded = () => {
+      loadedCount++;
+      if (loadedCount === 3) {
+        setIsPreloading(false);
+        setStep('reveal');
+      }
+    };
+
+    picked.forEach(card => {
+      const img = new Image();
+      img.src = getCardImageUrl(card.name);
+      img.onload = checkAllLoaded;
+      img.onerror = checkAllLoaded;
+    });
   };
 
   const revealCard = (index: number) => {
@@ -233,9 +250,17 @@ export const DailyReading: React.FC<DailyReadingProps> = ({ profile, settings })
             
             <button
               onClick={drawCards}
-              className="px-12 py-4 bg-tarot-gold hover:bg-yellow-600 text-slate-950 font-bold rounded-xl transition-all"
+              disabled={isPreloading}
+              className="px-12 py-4 bg-tarot-gold hover:bg-yellow-600 disabled:bg-slate-700 text-slate-950 font-bold rounded-xl transition-all flex items-center justify-center gap-2 mx-auto"
             >
-              Parar e Tirar Cartas
+              {isPreloading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Conectando ao Oráculo...
+                </>
+              ) : (
+                'Parar e Tirar Cartas'
+              )}
             </button>
           </motion.div>
         )}

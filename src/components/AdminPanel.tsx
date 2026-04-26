@@ -71,14 +71,30 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ settings }) => {
     }
   };
 
-  const togglePremium = async (user: UserProfile) => {
+  const setPremiumStatus = async (user: UserProfile, months: number | null) => {
     try {
       const userRef = doc(db, 'users', user.uid);
-      await setDoc(userRef, {
-        isPremium: !user.isPremium
-      }, { merge: true });
-      setFoundUser({ ...user, isPremium: !user.isPremium });
-      setMessage({ type: 'success', text: `Status Premium de ${user.displayName} atualizado` });
+      
+      if (months === null) {
+        await setDoc(userRef, {
+          isPremium: false,
+          premiumExpiresAt: null
+        }, { merge: true });
+        setFoundUser({ ...user, isPremium: false, premiumExpiresAt: null });
+        setMessage({ type: 'success', text: `Premium de ${user.displayName} revogado.` });
+      } else {
+        const { Timestamp } = await import('firebase/firestore');
+        const expiresAt = new Date();
+        expiresAt.setMonth(expiresAt.getMonth() + months);
+        const timestamp = Timestamp.fromDate(expiresAt);
+        
+        await setDoc(userRef, {
+          isPremium: true,
+          premiumExpiresAt: timestamp
+        }, { merge: true });
+        setFoundUser({ ...user, isPremium: true, premiumExpiresAt: timestamp as any });
+        setMessage({ type: 'success', text: `Premium de ${months} meses concedido para ${user.displayName}.` });
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`);
     }
@@ -218,23 +234,43 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ settings }) => {
                   <p className="text-slate-200 font-bold">{foundUser.displayName}</p>
                   <p className="text-xs text-slate-400">{foundUser.email}</p>
                 </div>
-                {foundUser.isPremium && (
-                  <span className="px-2 py-1 bg-tarot-gold/20 text-tarot-gold text-[10px] font-bold rounded uppercase">Premium</span>
+                {foundUser.isPremium ? (
+                  <div className="text-right">
+                    <span className="px-2 py-1 bg-tarot-gold/20 text-tarot-gold text-[10px] font-bold rounded uppercase">Premium</span>
+                    {foundUser.premiumExpiresAt && (
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        Expira em: {new Date(foundUser.premiumExpiresAt.seconds ? foundUser.premiumExpiresAt.seconds * 1000 : foundUser.premiumExpiresAt).toLocaleDateString('pt-BR')}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <span className="px-2 py-1 bg-slate-800 text-slate-400 text-[10px] font-bold rounded uppercase">Gratuito</span>
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => togglePremium(foundUser)}
-                  className={`flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${
-                    foundUser.isPremium 
-                      ? 'bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20' 
-                      : 'bg-tarot-gold/10 text-tarot-gold border border-tarot-gold/20 hover:bg-tarot-gold/20'
-                  }`}
-                >
-                  <Star className={`w-3 h-3 ${foundUser.isPremium ? 'fill-current' : ''}`} />
-                  {foundUser.isPremium ? 'Remover Premium' : 'Tornar Premium'}
-                </button>
+              {!foundUser.isPremium ? (
+                 <div className="space-y-2">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Conceder Premium</p>
+                    <div className="grid grid-cols-4 gap-2">
+                      <button onClick={() => setPremiumStatus(foundUser, 1)} className="py-2 bg-tarot-gold/10 text-tarot-gold border border-tarot-gold/20 hover:bg-tarot-gold/20 rounded-lg text-xs font-bold transition-all">1 Mês</button>
+                      <button onClick={() => setPremiumStatus(foundUser, 3)} className="py-2 bg-tarot-gold/10 text-tarot-gold border border-tarot-gold/20 hover:bg-tarot-gold/20 rounded-lg text-xs font-bold transition-all">3 Meses</button>
+                      <button onClick={() => setPremiumStatus(foundUser, 6)} className="py-2 bg-tarot-gold/10 text-tarot-gold border border-tarot-gold/20 hover:bg-tarot-gold/20 rounded-lg text-xs font-bold transition-all">6 Meses</button>
+                      <button onClick={() => setPremiumStatus(foundUser, 12)} className="py-2 bg-tarot-gold/10 text-tarot-gold border border-tarot-gold/20 hover:bg-tarot-gold/20 rounded-lg text-xs font-bold transition-all">Anual</button>
+                    </div>
+                 </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-2">
+                  <button
+                    onClick={() => setPremiumStatus(foundUser, null)}
+                    className="flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20"
+                  >
+                    <Star className="w-3 h-3 fill-current" />
+                    Revogar Premium
+                  </button>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 pt-2 border-t border-white/5">
                 <button
                   onClick={() => toggleAdmin(foundUser)}
                   className={`flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${

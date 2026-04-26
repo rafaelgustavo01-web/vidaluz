@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { db } from '../lib/firebase';
 import { doc, getDoc, setDoc, onSnapshot, Timestamp } from 'firebase/firestore';
 import { User as FirebaseUser } from 'firebase/auth';
 
@@ -10,7 +10,9 @@ export interface UserProfile {
   displayName: string;
   createdAt: any;
   isPremium: boolean;
+  premiumExpiresAt?: any;
   role: 'user' | 'admin';
+  lastVisionDate?: any;
 }
 
 export interface AppSettings {
@@ -25,14 +27,36 @@ export function useAppUser(firebaseUser: FirebaseUser | null) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+
     if (!firebaseUser) {
       setProfile(null);
       setLoading(false);
       return;
     }
+    
+    // Safety timeout: If Firebase takes longer than 3 seconds to respond, unlock the app UI
+    const safetyTimeout = setTimeout(() => {
+      if (isMounted) {
+        setLoading(false);
+      }
+    }, 3000);
 
     const userRef = doc(db, 'users', firebaseUser.uid);
     
+    const checkExpiration = async (profileData: UserProfile) => {
+      if (profileData.isPremium && profileData.premiumExpiresAt) {
+        const expiresAt = profileData.premiumExpiresAt.toDate ? profileData.premiumExpiresAt.toDate() : new Date(profileData.premiumExpiresAt);
+        if (new Date() > expiresAt) {
+          // Expirou
+          profileData.isPremium = false;
+          profileData.premiumExpiresAt = null;
+          await setDoc(userRef, { isPremium: false, premiumExpiresAt: null }, { merge: true }).catch(e => console.error(e));
+        }
+      }
+      return profileData;
+    };
+
     // Sync user profile
     const syncProfile = async () => {
       try {
@@ -46,42 +70,56 @@ export function useAppUser(firebaseUser: FirebaseUser | null) {
             isPremium: false,
             role: 'user'
           };
-          await setDoc(userRef, newProfile);
-          setProfile(newProfile);
+          // Try to set it, but don't block everything if permissions deny it somehow initially
+          await setDoc(userRef, newProfile).catch(e => console.error('SetDoc profile error:', e));
+          if (isMounted) setProfile(newProfile);
         } else {
-          setProfile(snap.data() as UserProfile);
+          const p = snap.data() as UserProfile;
+          const checked = await checkExpiration(p);
+          if (isMounted) setProfile(checked);
         }
       } catch (error) {
         console.error('Error syncing profile:', error);
+      } finally {
+        if (isMounted) setLoading(false);
       }
     };
 
     syncProfile();
 
     // Listen for profile changes
-    const unsubProfile = onSnapshot(userRef, (snap) => {
-      if (snap.exists()) {
-        setProfile(snap.data() as UserProfile);
+    const unsubProfile = onSnapshot(userRef, async (snap) => {
+      if (snap.exists() && isMounted) {
+        const p = snap.data() as UserProfile;
+        const checked = await checkExpiration(p);
+        if (isMounted) setProfile(checked);
       }
-    }, (error) => handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`));
+    }, (error) => {
+       console.error('Error listening to profile', error);
+    });
 
     // Listen for global settings
     const settingsRef = doc(db, 'settings', 'global');
     const unsubSettings = onSnapshot(settingsRef, (snap) => {
-      if (snap.exists()) {
-        setSettings(snap.data() as AppSettings);
-      } else {
-        // Initialize settings if they don't exist (only admin can do this, but we'll handle it gracefully)
-        setSettings({ isReadingLimitEnabled: true });
+      if (isMounted) {
+        if (snap.exists()) {
+          setSettings(snap.data() as AppSettings);
+        } else {
+          setSettings({ isReadingLimitEnabled: true });
+        }
+        setLoading(false);
       }
-      setLoading(false);
-    }, () => {
-      // If settings don't exist or no permission, default to enabled
-      setSettings({ isReadingLimitEnabled: true });
-      setLoading(false);
+    }, (error) => {
+      console.error('Error listening to settings', error);
+      if (isMounted) {
+        setSettings({ isReadingLimitEnabled: true });
+        setLoading(false);
+      }
     });
 
     return () => {
+      isMounted = false;
+      clearTimeout(safetyTimeout);
       unsubProfile();
       unsubSettings();
     };

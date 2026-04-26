@@ -67,6 +67,27 @@ export const Auth: React.FC = () => {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await signInWithGoogle();
+      console.log('Login efetuado com sucesso:', result.user.email);
+    } catch (err: any) {
+      console.error('GOOGLE AUTH ERROR', err);
+      if (err.code === 'auth/unauthorized-domain') {
+        setError('Configure o domínio no Console > Authentication > Settings > Authorized domains.');
+      } else if (err.code === 'auth/popup-closed-by-user') {
+        setError('O login do Google foi fechado antes de concluir.');
+      } else {
+        // Exibe o erro explícito para debugar
+        setError(`Erro: ${err.message || err.code || 'Falha desconhecida.'}`);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
       <motion.div
@@ -233,10 +254,11 @@ export const Auth: React.FC = () => {
 
                 <button
                   type="button"
-                  onClick={signInWithGoogle}
+                  onClick={handleGoogleLogin}
+                  disabled={loading}
                   className="w-full py-4 px-6 bg-white/5 hover:bg-white/10 text-slate-200 font-medium rounded-xl border border-white/10 transition-all flex items-center justify-center gap-3"
                 >
-                  <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" referrerPolicy="no-referrer" />
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" referrerPolicy="no-referrer" />}
                   Entrar com Google
                 </button>
 

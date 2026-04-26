@@ -84,6 +84,10 @@ service cloud.firestore {
                       (isOwner(userId) && isValidUser(request.resource.data) && 
                        request.resource.data.role == resource.data.role &&
                        request.resource.data.isPremium == resource.data.isPremium);
+                       
+      match /tokens/{tokenId} {
+        allow read, write: if isOwner(userId);
+      }
     }
 
     match /readings/{readingId} {

@@ -3,7 +3,8 @@ import { motion } from 'motion/react';
 import { Sparkles, Loader2, Share2, Download, Check } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 import { db, auth } from '../lib/firebase';
-import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, Timestamp, doc, updateDoc } from 'firebase/firestore';
+import { UserProfile } from '../hooks/useAppUser';
 
 declare global {
   interface Window {
@@ -16,7 +17,11 @@ declare global {
 
 const ASPECT_RATIOS = ["1:1", "3:4", "4:3", "9:16", "16:9", "2:3", "3:2", "1:4", "1:8", "4:1", "8:1"];
 
-export const ManifestVision: React.FC = () => {
+interface ManifestVisionProps {
+  profile: UserProfile | null;
+}
+
+export const ManifestVision: React.FC<ManifestVisionProps> = ({ profile }) => {
   const [prompt, setPrompt] = useState('');
   const [aspectRatio, setAspectRatio] = useState('1:1');
   const [loading, setLoading] = useState(false);
@@ -65,6 +70,17 @@ export const ManifestVision: React.FC = () => {
 
   const generateImage = async () => {
     if (!prompt.trim()) return;
+    
+    // Check limit
+    if (profile && profile.role !== 'admin' && profile.lastVisionDate) {
+      const lastVisionTime = profile.lastVisionDate.toDate ? profile.lastVisionDate.toDate() : new Date(profile.lastVisionDate);
+      const isToday = new Date().toDateString() === lastVisionTime.toDateString();
+      if (isToday) {
+        setError("Limite atingido. Apenas uma Visão Materializada pode ser gerada por dia. Retorne amanhã.");
+        return;
+      }
+    }
+
     setLoading(true);
     setError(null);
     setImageUrl(null);
@@ -120,6 +136,9 @@ export const ManifestVision: React.FC = () => {
               createdAt: Timestamp.now()
             });
             setLastVisionId(docRef.id);
+            await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+              lastVisionDate: Timestamp.now()
+            });
           } catch (saveErr) {
             console.error("Failed to save vision:", saveErr);
           }
